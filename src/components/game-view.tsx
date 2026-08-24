@@ -99,13 +99,16 @@ export function GameView() {
                 <Play className="mr-2 size-4" />
                 Play
               </Button>
-              {hud.high > 0 ? (
-                <p className="mt-5 font-mono text-xs tabular-nums text-subtle">Best {hud.high | 0}</p>
-              ) : null}
-              <p className="mt-8 max-w-sm text-xs leading-relaxed text-subtle">
-                Jump with Space, Z, or W — hold for extra height. Dash with Shift or X. Combo x100:
-                SUPER (Flappy hover). M mutes.
-              </p>
+              {/* The scene scrolls behind this, so the text needs its own ground to sit on. */}
+              <div className="mt-8 w-full max-w-sm rounded-lg border border-border bg-bg/85 px-4 py-3 backdrop-blur-sm">
+                {hud.high > 0 ? (
+                  <p className="mb-2 font-mono text-xs tabular-nums text-muted">Best {hud.high | 0}</p>
+                ) : null}
+                <p className="text-xs leading-relaxed text-muted">
+                  Jump with Space, Z, or W — hold for extra height. Dash with Shift or X. Combo x100:
+                  SUPER (Flappy hover). M mutes.
+                </p>
+              </div>
             </div>
           ) : null}
 

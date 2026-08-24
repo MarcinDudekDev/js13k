@@ -277,6 +277,12 @@ function hill(off, yo, col, amp) {
   X.fillStyle = col;
   X.fill();
 }
+function scrim(x, y, w, h) {
+  X.fillStyle = "rgba(12,11,14,.85)";
+  X.beginPath();
+  X.roundRect(x, y, w, h, 8);
+  X.fill();
+}
 function star(ctx, r) {
   ctx.beginPath();
   for (let i = 0; i < 10; i++) {
@@ -926,7 +932,8 @@ function draw() {
     X.fillStyle = "#f4efe8";
     X.font = "500 " + 14 * sc + "px ui-sans-serif,system-ui";
     X.fillText("SPACE / TAP  ·  PLAY", W / 2, H * 0.62);
-    X.fillStyle = "#716c68";
+    scrim(W / 2 - 200 * sc, H * 0.62 + 14 * sc, 400 * sc, (hi ? 46 : 24) * sc);
+    X.fillStyle = "#a39a94";
     X.font = "400 " + 12 * sc + "px ui-sans-serif,system-ui";
     X.fillText("JUMP  space z   DASH  shift x   SMASH the dolphins", W / 2, H * 0.62 + 28 * sc);
     if (hi) X.fillText("BEST " + hi, W / 2, H * 0.62 + 52 * sc);
