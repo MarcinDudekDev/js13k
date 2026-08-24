@@ -951,6 +951,7 @@ function draw() {
     X.fillStyle = "#a39a94";
     X.font = "400 " + 13 * sc + "px ui-sans-serif,system-ui";
     X.fillText("JUMP + DASH  to ride again", W / 2, H * 0.32 + 140 * sc);
+    X.fillText("ESC  title screen", W / 2, H * 0.32 + 162 * sc);
   }
 }
 function resize() {
@@ -991,6 +992,11 @@ onkeydown = (e) => {
     dash();
   }
   if (e.code === "Enter" && mode === 0) go();
+  if (e.code === "Escape" && mode === 2) {
+    e.preventDefault();
+    world();
+    mode = 0;
+  }
   if (e.code === "KeyM") {
     e.preventDefault();
     muted ^= 1;

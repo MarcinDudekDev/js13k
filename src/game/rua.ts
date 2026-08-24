@@ -18,6 +18,7 @@ export type Hud = {
 export type GameAPI = {
   start(): void;
   restart(): void;
+  toTitle(): void;
   pause(): void;
   resume(): void;
   jump(): void;
@@ -462,6 +463,16 @@ export function createGame(canvas: HTMLCanvasElement, onHud: (h: Hud) => void): 
     mode = "play";
     emitHud();
     requestAnimationFrame(() => audio.startMusic());
+  }
+
+  /** Back out of the death screen to the attract-mode title. */
+  function toTitle() {
+    if (mode !== "dead") return;
+    audio.setSuper(false);
+    wasSuper = false;
+    resetWorld((Math.random() * 1e9) | 0);
+    mode = "title";
+    emitHud();
   }
 
   function addScore(n: number, x: number, y: number, label: string) {
@@ -1219,6 +1230,10 @@ export function createGame(canvas: HTMLCanvasElement, onHud: (h: Hud) => void): 
       }
       return;
     }
+    if (e.code === "Escape") {
+      toTitle();
+      return;
+    }
     if (e.code === "Enter") {
       if (mode === "title") start();
       else if (mode === "pause") {
@@ -1267,6 +1282,7 @@ export function createGame(canvas: HTMLCanvasElement, onHud: (h: Hud) => void): 
   return {
     start,
     restart,
+    toTitle,
     pause() {
       if (mode === "play") {
         mode = "pause";

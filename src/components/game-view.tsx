@@ -162,6 +162,13 @@ export function GameView() {
                   </div>
                 </dl>
                 <p className="mt-6 text-sm text-fg">Jump + Dash to ride again</p>
+                <Button
+                  variant="ghost"
+                  className="mt-3 h-10 w-full rounded-lg text-xs"
+                  onClick={() => api?.toTitle()}
+                >
+                  Title screen <span className="ml-2 font-mono text-muted">Esc</span>
+                </Button>
               </div>
             </div>
           ) : null}
