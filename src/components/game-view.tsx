@@ -43,23 +43,6 @@ export function GameView() {
     return m + ":" + (r < 10 ? "0" : "") + r;
   }
 
-  async function saveFile(path: string, name: string) {
-    try {
-      const res = await fetch(path);
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = name;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      setTimeout(() => URL.revokeObjectURL(url), 1500);
-    } catch {
-      window.open(path, "_blank", "noopener");
-    }
-  }
-
   return (
     <div className="flex h-dvh w-full flex-col overflow-hidden bg-bg text-fg">
       <div className="relative min-h-0 flex-1">
@@ -116,22 +99,6 @@ export function GameView() {
                 <Play className="mr-2 size-4" />
                 Play
               </Button>
-              <div className="mt-3 flex w-full max-w-xs flex-col gap-2">
-                <button
-                  type="button"
-                  className="inline-flex h-11 items-center justify-center rounded-md border border-border-strong bg-bg-elevated text-sm text-fg"
-                  onClick={() => saveFile("/tribute-unicorn-attack-source.zip", "tribute-unicorn-attack-source.zip")}
-                >
-                  Download source (.zip)
-                </button>
-                <button
-                  type="button"
-                  className="inline-flex h-11 items-center justify-center rounded-md border border-border-strong bg-bg-elevated text-sm text-fg"
-                  onClick={() => saveFile("/rua.zip", "rua-js13k.zip")}
-                >
-                  Download js13k entry (7 KB)
-                </button>
-              </div>
               {hud.high > 0 ? (
                 <p className="mt-5 font-mono text-xs tabular-nums text-subtle">Best {hud.high | 0}</p>
               ) : null}
