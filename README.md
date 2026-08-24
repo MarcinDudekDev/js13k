@@ -4,7 +4,11 @@ A js13k 2026 entry. Endless runner, one canvas, no dependencies.
 
 Jump, double-jump, dash through dolphins, chase a combo. Love. And also, rainbows.
 
-![Title screen](screenshots/jam-title.png)
+![Title screen](screenshots/01-title.png)
+
+| | |
+|---|---|
+| ![Gameplay](screenshots/02-gameplay.png) | ![SUPER](screenshots/03-super.png) |
 
 ## Play
 
