@@ -7,10 +7,4 @@ node_modules/
 .env
 *.log
 
-# Build / tooling output
-dist/
-.output/
-.vercel/
-.tanstack/
-.nitro/
-artifacts/
+# Build output is committed on purpose: dist/rua.zip is the submission artifact.
