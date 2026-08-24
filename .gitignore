@@ -6,3 +6,11 @@ venv/
 node_modules/
 .env
 *.log
+
+# Build / tooling output
+dist/
+.output/
+.vercel/
+.tanstack/
+.nitro/
+artifacts/

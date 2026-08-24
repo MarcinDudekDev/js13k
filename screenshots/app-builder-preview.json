@@ -1,0 +1,36 @@
+{
+  "url": "http://127.0.0.1:8080/",
+  "viewports": {
+    "desktop": {
+      "width": 1280,
+      "height": 800,
+      "status": 200,
+      "title": "Robot Unicorn",
+      "hasCanvas": true,
+      "bodyTextLen": 181,
+      "bodyTextHash": "2d21486cd122badedd30be024c5e442aad50480ae07b13c3461399c03c9363b8",
+      "bodyTextPrefix": "SCORE 0 BEST 0 JS13K 2026 Robot Unicorn Love. And also, rainbows",
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "screenshot": "/workspace/screenshots/app-builder-preview.png"
+    },
+    "mobile": {
+      "width": 390,
+      "height": 844,
+      "status": 200,
+      "title": "Robot Unicorn",
+      "hasCanvas": true,
+      "bodyTextLen": 182,
+      "bodyTextHash": "5136f498b44215615d7cc61a05bf2ae940aa52cbd0bf643acd62a7cace6897f5",
+      "bodyTextPrefix": "SCORE 50 BEST 0 JS13K 2026 Robot Unicorn Love. And also, rainbow",
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "screenshot": "/workspace/screenshots/app-builder-preview-mobile.png"
+    }
+  },
+  "brandWarnings": [],
+  "authWarnings": [],
+  "verdictFile": "/workspace/screenshots/app-builder-preview.json"
+}
