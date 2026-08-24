@@ -2,64 +2,68 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## What this repo is
+## What this is
 
-Two shipping surfaces for the same game — **Tribute Unicorn Attack** (a Robot Unicorn Attack tribute: an endless runner with jump, double-jump, dash and dolphin-smashing):
+**Tribute Unicorn Attack** — a js13k 2026 entry. An endless runner (jump, double-jump, dash, smash dolphins) drawn on a 2D `<canvas>`.
 
-| Surface | Entry | Runs as | Constraint |
-|---|---|---|---|
-| **js13k jam entry** | `jam/src.js` | Plain `<canvas>` + one `<script>`, zero deps | Zipped build must stay **under 13312 bytes** |
-| **Web app** | `src/game/rua.ts` + `src/components/game-view.tsx` | TanStack Start / React 19 route at `/` | No size limit; React HUD chrome |
+The whole game is **one file of dependency-free vanilla JavaScript**: `src.js`. No framework, no bundler, no imports. `index.html` is 12 lines and loads it with a plain `<script src>`. That is deliberate and is the hard constraint of the project — see Size budget below.
 
-**These are two separate implementations of the same game, not one shared engine.** `jam/src.js` is hand-golfed vanilla JS with the HUD drawn onto the canvas; `src/game/rua.ts` exports `createGame(canvas, onHud)` returning a `GameAPI`, and React renders the HUD from the `Hud` snapshots it pushes. A gameplay change made in one does **not** propagate — port it deliberately, or say which surface you changed.
-
-This repo was exported from a **Grok App Builder** sandbox. `AGENTS.md` (and everything under `.grok/`) is that platform's contract, written for a Linux container at `/workspace` listening on `0.0.0.0:8080`. Treat it as inherited context, not as instructions for this machine — but the parts it enforces mechanically (below) are real and still bite.
+The repo was originally exported from a Grok App Builder sandbox that wrapped the game in a TanStack Start / React app. **That wrapper was deleted** (along with `AGENTS.md`, `.grok/`, `server/`, `scripts/`, `migrations/`, Vite and TypeScript config). If you find a reference to React, TanStack, Vercel, `/workspace` or `0.0.0.0:8080` anywhere, it is a leftover and should go. Do not reintroduce a build framework.
 
 ## Commands
 
 ```bash
-npm install              # node_modules is NOT in the repo; nothing below works without it
-
-npm run dev              # dev server on 0.0.0.0:8080
-npm run build            # vite build + db:migrate
-npm run preview          # preview server on :8081
-npm run typecheck        # tsc --noEmit
-npm run lint             # eslint .
-npm run format           # prettier --write .
-npm test                 # node --test over scripts/**/*.test.mjs + two src/lib tests
-
-npm run jam:build        # minify jam/src.js -> public/jam.html, jam/index.min.html, public/rua.zip
+npm install        # only terser + prettier
+npm run build      # minify src.js -> dist/index.html + dist/rua.zip, print size vs the cap
+npm run serve      # python3 -m http.server 8123 from the repo root
+npm run format
 ```
 
-Run a single test file: `node --test scripts/brand-check.test.mjs`. For the TypeScript ones: `node --experimental-strip-types --test src/lib/auth/gate-identity.test.ts`.
+There are no tests and no lint config. Verification is done by playing it in a browser (see below).
 
-**Never start Vite directly (`vite dev`, `npx vite`).** Only the npm scripts route through `scripts/with-app-env.mjs`, which merges `.grok/app-env.json` (`VITE_AUTH_ENABLED`) into the environment before Vite's `loadEnv` runs. Bypassing it makes the dev server and the build disagree about whether auth exists — `npm run check:auth` exists solely to detect that divergence (exit 0 agree / 1 diverged / 2 could not observe).
+Open `http://127.0.0.1:8123/index.html` for the readable source build, or `/dist/index.html` for the minified one that actually ships. Both should behave identically — check both after any change to `src.js`, because minification with `mangle.toplevel` has bitten this kind of code before.
 
-### Running the jam entry locally
+## Size budget — the constraint everything answers to
 
-`jam/index.html` loads `src.js` unbuilt, so any static server over `jam/` plays it — no build, no `npm install`:
+`dist/rua.zip` must stay **under 13312 bytes**. `npm run build` prints the number and exits non-zero if it goes over.
 
-```bash
-python3 -m http.server 8123 --directory jam   # then open /index.html (source) or /index.min.html (built)
-```
+Currently **7573 / 13312 (56.9%)**, so there is real headroom — but every change is priced in bytes. This is why `src.js` looks the way it does: single-letter globals (`W`, `H`, `X` for the 2D context, `P` for the player, `T` for time), no comments in hot paths, numeric mode flags (`0` title, `1` play, `2` dead), and hundreds of unexplained numeric constants. **That is correct for this file.** Do not "clean it up" — naming the magic numbers or expanding the identifiers would cost more than the readability is worth here. A code-quality scan will score this file badly on MagicNumbers, Naming and Comments; ignore it.
 
-`npm run jam:build` prints the zip size against the 13312 limit on every run. Current entry is ~7.3 KB zipped, roughly 55% of budget.
+## Architecture
 
-## Architecture notes
+One file, roughly in this order:
 
-**Vite config is load-bearing and partly not yours.** `vite.config.ts` pins `0.0.0.0:8080` (dev) and `:8081` (preview), and wires four things that the platform depends on: `grokPwaPlugin()` (injects the "Created with Grok" pill and overwrites all `og:*` / `twitter:*` meta on every HTML response — so never put social meta in `__root.tsx`), `appEnvPlugin()` (serves `/__app-env` for the auth-invariant probe), a `/auth/popup` middleware handled in the config itself rather than as a route, and a `pgliteBootstrapPlugin` that only wakes when `migrations/` actually contains migration files.
+- **State** — module-scope `let`s and small object literals. `P` is the player; `gaps` / `stars` / `obs` are world objects; `pts` is a **preallocated particle pool** (ring buffer via `pi`), never grown at runtime.
+- **Audio** (`unlock`, `beep`, `noise`, `sfx`, `loopMus`) — WebAudio, procedurally generated. Everything is created on demand; nothing is decoded on the frame path.
+- **World** (`world`, `fill`, `gyRaw`, `gy`, `inGap`) — `world()` is the full reset used by both new-game and back-to-title. `gyRaw(wx)` is the terrain height; `gy(wx)` is the same plus the gap check. Callers that already know they are not over a gap should call `gyRaw` to avoid a second scan of `gaps`.
+- **Draw helpers** (`hill`, `star`, `unicorn`, `dolphin`, `spike`, `scrim`).
+- **`step(dt)`** — fixed-timestep simulation, accumulator in `loop()`, `dt` capped at 0.1 so a backgrounded tab does not teleport the player.
+- **`draw()`** — all rendering, ordered back to front.
+- **Input** — `onkeydown` / `onkeyup` / pointer handlers at the bottom.
 
-**Auth and database are OFF for this app** (`.grok/app-env.json`: `VITE_AUTH_ENABLED: false`, `deploy.database: false`). The wiring in `src/lib/auth/` and `src/lib/db.ts` is pre-built template scaffolding that this game does not use — high scores live in `localStorage` under the key `rua.v1`. Do not import `authMiddleware` / `requireUserId` / `@/lib/db` while auth is off: the dev user those return is preview-only, so every such server function rejects real visitors once deployed.
+Mode transitions: `go()` starts or restarts a run, `die()` ends one, and `Escape` in `onkeydown` goes from dead back to title by calling `world()` and setting `mode = 0`.
 
-**`server/`, `public/__grok/` and `scripts/grok-pwa-*` are platform chrome.** New server routes belong in `src/routes/`, never `server/`.
+## Rendering performance
 
-**`scripts/` is a self-tested toolbox**, not glue — most modules there ship a sibling `.test.mjs` and are imported by `browser-smoke.mjs`, which drives Playwright for QA and folds in the brand check and the auth-invariant comparison.
+The frame loop was profiled and tuned (~20% less main-thread JS per frame under 10× CPU throttle). The things that got it there are easy to undo by accident:
 
-## Known local-portability gotchas
+- **The sky gradient and hill palette are memoised**, keyed on `skyK`. They depend on the day clock, not on the frame. Do not move `PAL` / `DA` / `mix` / the `SK*` tables back inside `draw()`, and do not call `createLinearGradient` per frame.
+- **Stars are batched into 5 alpha buckets** (`SB`) so the 64-star field costs 5 fills instead of 64. Per-star `globalAlpha` would put it back to 64.
+- **Terrain is sampled at 16px** (`hill`) and the ridge at 12px. Finer steps were measurably slower and visually identical — the terrain is three low-frequency sines, so the extra vertices land inside the stroke width.
+- Invariant canvas state (`lineWidth`, `lineCap`) is hoisted out of the tail and mane loops. Setting it per iteration is the easy regression.
 
-The sandbox export assumed `/workspace` and a preinstalled global `node_modules`. Fixed here (don't reintroduce):
+Measuring: CPU time per frame comes from CDP `Performance.getMetrics` (`ScriptDuration` / `TaskDuration`) over ~1500 frames, with `Emulation.setCPUThrottlingRate` armed **before** navigation. Unthrottled rAF deltas are useless here — they pin to the 120 Hz vsync and hide everything.
 
-- `jam/build.mjs` derives its paths from `import.meta.url` instead of hard-coding `/workspace/public`.
-- `terser` is declared in `devDependencies`; it was previously only resolving from a stray `~/node_modules`.
+Known remaining lever, deliberately not taken: `resize()` caps `dpr` at 2, so on a retina display the sky and three hill fills rasterise at ~4× the CSS pixel count. Capping at 1.5 would cut that a lot, but it is a sharpness regression — a taste call, not a free win.
 
-`startup.sh` is still the sandbox's restart contract — it `cd`s to `/workspace` and is inert on this machine. Leave it alone rather than "fixing" it; the platform requires that exact path if the workspace is ever revived.
+## Verifying a change
+
+Play it. Loading the page is not enough — drive it with real key events and check the state machine, because most regressions here are in transitions rather than in rendering:
+
+1. Title screen paints and the attract-mode unicorn runs.
+2. Space starts a run.
+3. Falling in a gap kills you and shows the death card with time / stars / smashed.
+4. Jump+Dash restarts, `Escape` returns to the title with the world reset and `BEST` preserved.
+5. Check `/dist/index.html` too, not just `/index.html`.
+
+For contrast work, measure against the **rendered pixels** rather than the CSS values — the scene scrolls under the HUD text, so contrast varies frame to frame and has to be sampled as a worst case over many frames. That is how the title-screen hints ended up on a scrim.
