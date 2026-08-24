@@ -34,6 +34,32 @@ let starN = 0,
   wasS = 0,
   deadJ = 0,
   deadD = 0;
+const PAL = [
+  [42, 24, 64, 107, 58, 104, 232, 137, 184],
+  [26, 32, 72, 61, 74, 138, 126, 160, 255],
+  [20, 40, 28, 45, 107, 74, 110, 217, 160],
+  [48, 20, 24, 138, 58, 64, 255, 138, 106],
+  [40, 20, 48, 107, 58, 136, 200, 155, 255],
+  [48, 32, 16, 138, 96, 48, 240, 193, 74],
+];
+const DA = [56, 28, 36, 140, 72, 64, 240, 168, 128];
+const SK0 = [7, 5, 16],
+  SK1 = [26, 72, 140],
+  SK2 = [22, 16, 40],
+  SK3 = [255, 138, 92],
+  SK4 = [74, 36, 80],
+  SK5 = [255, 196, 120],
+  SK6 = [196, 92, 122],
+  SK7 = [255, 232, 196];
+let skyK = "",
+  skyG,
+  far,
+  mid,
+  near;
+function mix(a, b, t, i) {
+  const s = 1 - t;
+  return "rgb(" + ((a[i] * s + b[i] * t) | 0) + "," + ((a[i + 1] * s + b[i + 1] * t) | 0) + "," + ((a[i + 2] * s + b[i + 2] * t) | 0) + ")";
+}
 const nyan = [];
 const gaps = [],
   stars = [],
@@ -46,6 +72,7 @@ let pi = 0;
 const sky = [];
 for (let i = 0; i < 64; i++)
   sky.push({ x: Math.random(), y: Math.random() * 0.65, r: 0.5 + Math.random() * 1.3, p: Math.random() * 7 });
+const SB = [[], [], [], [], []];
 const keys = new Set();
 let jbuf = 0,
   dbuf = 0,
@@ -257,14 +284,16 @@ function px() {
 function inGap(wx) {
   for (const g of gaps) if (wx >= g.x && wx < g.x + g.w) return 1;
 }
-function gy(wx) {
-  if (inGap(wx)) return H + 240;
+function gyRaw(wx) {
   return H * 0.72 + Math.sin(wx * 0.0068) * 26 + Math.sin(wx * 0.017 + 1.3) * 14 + Math.sin(wx * 0.039) * 7;
+}
+function gy(wx) {
+  return inGap(wx) ? H + 240 : gyRaw(wx);
 }
 function hill(off, yo, col, amp) {
   X.beginPath();
   X.moveTo(-20, H + 20);
-  for (let x = -20; x <= W + 40; x += 8) {
+  for (let x = -20; x <= W + 40; x += 16) {
     const w = cam * off + x;
     const y =
       off === 1 && inGap(cam + x)
@@ -305,10 +334,10 @@ function unicorn(x, y) {
   X.beginPath();
   X.ellipse(0, (gy(px()) - y) / P.sq + 2, 22 * sc, 5 * sc, 0, 0, 7);
   X.fill();
+  X.lineWidth = 3 * sc;
+  X.lineCap = "round";
   for (let i = 0; i < 6; i++) {
     X.strokeStyle = RB[i];
-    X.lineWidth = 3 * sc;
-    X.lineCap = "round";
     X.beginPath();
     const w = Math.sin(g * 1.6 + i * 0.55);
     X.moveTo(-16 * sc, -18 * sc);
@@ -345,9 +374,9 @@ function unicorn(x, y) {
   X.moveTo(16 * sc, -26 * sc);
   X.quadraticCurveTo(24 * sc, -40 * sc, 30 * sc, -38 * sc);
   X.stroke();
+  X.lineWidth = 2.6 * sc;
   for (let i = 0; i < 7; i++) {
     X.strokeStyle = RB[i % 6];
-    X.lineWidth = 2.6 * sc;
     X.beginPath();
     const w = Math.sin(g * 2 + i * 0.7);
     X.moveTo(18 * sc, -34 * sc);
@@ -770,29 +799,20 @@ function draw() {
     hi_ = u | 0,
     f = u - hi_,
     dawn = Math.max(0, Math.min(1, (clock - 540) / 60));
-  const PAL = [
-    [42, 24, 64, 107, 58, 104, 232, 137, 184],
-    [26, 32, 72, 61, 74, 138, 126, 160, 255],
-    [20, 40, 28, 45, 107, 74, 110, 217, 160],
-    [48, 20, 24, 138, 58, 64, 255, 138, 106],
-    [40, 20, 48, 107, 58, 136, 200, 155, 255],
-    [48, 32, 16, 138, 96, 48, 240, 193, 74],
-  ];
-  const DA = [56, 28, 36, 140, 72, 64, 240, 168, 128];
-  function mix(a, b, t, i) {
-    const s = 1 - t;
-    return "rgb(" + ((a[i] * s + b[i] * t) | 0) + "," + ((a[i + 1] * s + b[i + 1] * t) | 0) + "," + ((a[i + 2] * s + b[i + 2] * t) | 0) + ")";
+  const k = hi_ + "|" + ((f * 48) | 0) + "|" + ((dawn * 48) | 0) + "|" + H;
+  if (k !== skyK) {
+    skyK = k;
+    const A = PAL[hi_ % 6],
+      B = PAL[(hi_ + 1) % 6];
+    far = dawn ? mix(A, DA, dawn, 0) : mix(A, B, f, 0);
+    mid = dawn ? mix(A, DA, dawn, 3) : mix(A, B, f, 3);
+    near = dawn ? mix(A, DA, dawn, 6) : mix(A, B, f, 6);
+    skyG = X.createLinearGradient(0, 0, 0, H);
+    skyG.addColorStop(0, mix(SK0, SK1, dawn, 0));
+    skyG.addColorStop(0.45, mix(SK2, SK3, dawn, 0));
+    skyG.addColorStop(0.78, mix(SK4, SK5, dawn, 0));
+    skyG.addColorStop(1, mix(SK6, SK7, dawn, 0));
   }
-  const A = PAL[hi_ % 6],
-    B = PAL[(hi_ + 1) % 6];
-  const far = dawn ? mix(A, DA, dawn, 0) : mix(A, B, f, 0);
-  const mid = dawn ? mix(A, DA, dawn, 3) : mix(A, B, f, 3);
-  const near = dawn ? mix(A, DA, dawn, 6) : mix(A, B, f, 6);
-  const skyG = X.createLinearGradient(0, 0, 0, H);
-  skyG.addColorStop(0, mix([7, 5, 16], [26, 72, 140], dawn, 0));
-  skyG.addColorStop(0.45, mix([22, 16, 40], [255, 138, 92], dawn, 0));
-  skyG.addColorStop(0.78, mix([74, 36, 80], [255, 196, 120], dawn, 0));
-  skyG.addColorStop(1, mix([196, 92, 122], [255, 232, 196], dawn, 0));
   X.fillStyle = skyG;
   X.fillRect(-20, -20, W + 40, H + 40);
   const moonX = W * (0.9 - clock * 0.0005),
@@ -817,11 +837,19 @@ function draw() {
     X.fill();
     X.globalAlpha = 1;
   }
-  for (const s of sky) {
-    X.globalAlpha = (0.45 + 0.55 * Math.abs(Math.sin(T * 2.2 + s.p))) * (1 - dawn * 0.92);
-    X.fillStyle = "#fff8e8";
+  for (const b of SB) b.length = 0;
+  for (const s of sky) SB[((0.45 + 0.55 * Math.abs(Math.sin(T * 2.2 + s.p))) * 4.99) | 0].push(s);
+  X.fillStyle = "#fff8e8";
+  for (let b = 0; b < 5; b++) {
+    const bin = SB[b];
+    if (!bin.length) continue;
+    X.globalAlpha = (0.5 + b * 0.125) * (1 - dawn * 0.92);
     X.beginPath();
-    X.arc(((s.x * W - cam * 0.08) % W + W) % W, s.y * H, s.r, 0, 7);
+    for (const s of bin) {
+      const sx2 = (((s.x * W - cam * 0.08) % W) + W) % W;
+      X.moveTo(sx2 + s.r, s.y * H);
+      X.arc(sx2, s.y * H, s.r, 0, 7);
+    }
     X.fill();
   }
   X.globalAlpha = 1;
@@ -838,12 +866,13 @@ function draw() {
   X.lineWidth = 3;
   X.beginPath();
   let pen = 0;
-  for (let x = -20; x <= W + 40; x += 6) {
-    if (inGap(cam + x)) {
+  for (let x = -20; x <= W + 40; x += 12) {
+    const wx = cam + x;
+    if (inGap(wx)) {
       pen = 0;
       continue;
     }
-    const y = gy(cam + x);
+    const y = gyRaw(wx);
     if (!pen) {
       X.moveTo(x, y);
       pen = 1;
