@@ -44,7 +44,7 @@ dist/rua.zip      the competition submission
 
 The build prints the zip size against the js13k limit and fails if it goes over.
 
-**Current size: 7573 / 13312 bytes (56.9%).**
+**Current size: 7608 / 13312 bytes (57.2%).**
 
 ## How it is built
 

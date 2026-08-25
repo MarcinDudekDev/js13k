@@ -27,7 +27,7 @@ Open `http://127.0.0.1:8123/index.html` for the readable source build, or `/dist
 
 `dist/rua.zip` must stay **under 13312 bytes**. `npm run build` prints the number and exits non-zero if it goes over.
 
-Currently **7573 / 13312 (56.9%)**, so there is real headroom — but every change is priced in bytes. This is why `src.js` looks the way it does: single-letter globals (`W`, `H`, `X` for the 2D context, `P` for the player, `T` for time), no comments in hot paths, numeric mode flags (`0` title, `1` play, `2` dead), and hundreds of unexplained numeric constants. **That is correct for this file.** Do not "clean it up" — naming the magic numbers or expanding the identifiers would cost more than the readability is worth here. A code-quality scan will score this file badly on MagicNumbers, Naming and Comments; ignore it.
+Currently **7608 / 13312 (57.2%)**, so there is real headroom — but every change is priced in bytes. This is why `src.js` looks the way it does: single-letter globals (`W`, `H`, `X` for the 2D context, `P` for the player, `T` for time), no comments in hot paths, numeric mode flags (`0` title, `1` play, `2` dead), and hundreds of unexplained numeric constants. **That is correct for this file.** Do not "clean it up" — naming the magic numbers or expanding the identifiers would cost more than the readability is worth here. A code-quality scan will score this file badly on MagicNumbers, Naming and Comments; ignore it.
 
 ## Architecture
 
@@ -57,6 +57,33 @@ Measuring: CPU time per frame comes from CDP `Performance.getMetrics` (`ScriptDu
 Known remaining lever, deliberately not taken: `resize()` caps `dpr` at 2, so on a retina display the sky and three hill fills rasterise at ~4× the CSS pixel count. Capping at 1.5 would cut that a lot, but it is a sharpness regression — a taste call, not a free win.
 
 ## Verifying a change
+
+**Test in Firefox, not just Chrome.** js13k requires the entry to work in both, and the
+2026 submission was rejected for "does not load on latest Firefox" after being verified
+only in Chromium. Chromium-only testing is how that shipped.
+
+Real Firefox can be driven with geckodriver + selenium (both installed):
+
+```bash
+geckodriver --version              # /opt/homebrew/bin/geckodriver
+# selenium venv used for this: /Users/cminds/claude-tmp/js13k/.venv-ff
+```
+
+Playwright's Firefox is a patched build and is a weaker signal than the real app. Note
+that `firefox --headless --screenshot` fires at the load event, before the first
+requestAnimationFrame, so it photographs a blank canvas and looks like a failure when
+nothing is wrong. Do not diagnose from that alone.
+
+Two things about the shipped artifact that a browser will never show you, and that broke
+the first submission:
+
+- **Zip entry permissions.** `zipfile.writestr` defaults to mode 0600. A host that
+  extracts as one user and serves as another then gets an unreadable file. `build.mjs`
+  now forces 0644 - check with `unzip -Z -l dist/rua.zip`.
+- **Explicit document structure.** The HTML must carry real `<html>`, `<head>` and
+  `<body>` tags even though browsers infer them. A jam host that injects its own overlay
+  by string-matching `</body>` has nothing to match otherwise, and the engines recover
+  from the result differently.
 
 Play it. Loading the page is not enough — drive it with real key events and check the state machine, because most regressions here are in transitions rather than in rendering:
 
