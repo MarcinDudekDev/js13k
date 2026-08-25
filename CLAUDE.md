@@ -27,7 +27,7 @@ Open `http://127.0.0.1:8123/index.html` for the readable source build, or `/dist
 
 `dist/rua.zip` must stay **under 13312 bytes**. `npm run build` prints the number and exits non-zero if it goes over.
 
-Currently **7608 / 13312 (57.2%)**, so there is real headroom — but every change is priced in bytes. This is why `src.js` looks the way it does: single-letter globals (`W`, `H`, `X` for the 2D context, `P` for the player, `T` for time), no comments in hot paths, numeric mode flags (`0` title, `1` play, `2` dead), and hundreds of unexplained numeric constants. **That is correct for this file.** Do not "clean it up" — naming the magic numbers or expanding the identifiers would cost more than the readability is worth here. A code-quality scan will score this file badly on MagicNumbers, Naming and Comments; ignore it.
+Currently **7654 / 13312 (57.5%)**, so there is real headroom — but every change is priced in bytes. This is why `src.js` looks the way it does: single-letter globals (`W`, `H`, `X` for the 2D context, `P` for the player, `T` for time), no comments in hot paths, numeric mode flags (`0` title, `1` play, `2` dead), and hundreds of unexplained numeric constants. **That is correct for this file.** Do not "clean it up" — naming the magic numbers or expanding the identifiers would cost more than the readability is worth here. A code-quality scan will score this file badly on MagicNumbers, Naming and Comments; ignore it.
 
 ## Architecture
 
@@ -74,8 +74,33 @@ that `firefox --headless --screenshot` fires at the load event, before the first
 requestAnimationFrame, so it photographs a blank canvas and looks like a failure when
 nothing is wrong. Do not diagnose from that alone.
 
-Two things about the shipped artifact that a browser will never show you, and that broke
-the first submission:
+### The rejection that mattered
+
+The 2026 entry was rejected twice for "does not load on latest Firefox". The cause was
+**`ctx.roundRect`**, called from `scrim()` inside `draw()` - so on any engine without it
+the very first frame threw, the rAF loop died, and the game never appeared. `roundRect`
+needs Firefox 112+ / Chrome 99+, so an ESR or hardened build has none. It now feature-tests
+and falls back to `fillRect`, and `draw()` is wrapped so one unsupported call can never
+stop the loop again.
+
+A second latent killer was found the same way: `unlock()` (audio setup) ran *before*
+`jump()` in the keydown handler and was unguarded, so any WebAudio failure meant Space did
+nothing while the title screen kept animating - looking alive but dead. Audio setup now
+runs last and every audio entry point is guarded.
+
+**Test hostile environments, not just your own.** Neither bug is visible on a healthy
+machine. The method that found both: serve the built game from a page that sabotages one
+API before the game script loads, then assert the game actually *starts*. Cases worth
+keeping: `AudioContext` throwing or missing, `createGain`/`createBuffer` throwing,
+`OfflineAudioContext` throwing, `localStorage` throwing on access, an AudioContext stuck
+suspended, `roundRect` missing or throwing, `devicePixelRatio` of 0.
+
+**Assert on state, not on "pixels changed".** The title screen animates by itself, so
+"the canvas differs after Space" is true whether or not the game started - an early test
+of mine passed for that reason while the game was completely dead. Count near-white pixels
+in the band where the title text sits and require it to collapse.
+
+Two more things about the shipped artifact that a browser will never show you:
 
 - **Zip entry permissions.** `zipfile.writestr` defaults to mode 0600. A host that
   extracts as one user and serves as another then gets an unreadable file. `build.mjs`

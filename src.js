@@ -73,6 +73,7 @@ const sky = [];
 for (let i = 0; i < 64; i++)
   sky.push({ x: Math.random(), y: Math.random() * 0.65, r: 0.5 + Math.random() * 1.3, p: Math.random() * 7 });
 const SB = [[], [], [], [], []];
+let noAudio = 0;
 const keys = new Set();
 let jbuf = 0,
   dbuf = 0,
@@ -101,6 +102,8 @@ function R32(s) {
   };
 }
 function unlock() {
+  if (noAudio) return;
+  try {
   if (!ac) {
     ac = new AudioContext();
     mast = ac.createGain();
@@ -127,6 +130,10 @@ function unlock() {
   } else {
     if (bufC && !srcC) loopMus(bufC, musCalm, 0);
     if (bufH && !srcH) loopMus(bufH, musHot, 1);
+  }
+  } catch (e) {
+    noAudio = 1;
+    ac = 0;
   }
 }
 function noteOff(off, dest, t, f, type, vol, dur) {
@@ -189,6 +196,7 @@ async function bakeMus() {
 }
 function loopMus(buf, g, hot) {
   if (!ac || !g || !buf) return;
+  try {
   const s = ac.createBufferSource();
   s.buffer = buf;
   s.loop = true;
@@ -196,16 +204,20 @@ function loopMus(buf, g, hot) {
   s.start();
   if (hot) srcH = s;
   else srcC = s;
+  } catch (e) { ac = 0; }
 }
 function setHot(on) {
   wantH = on ? 1 : 0;
   if (!ac || !musCalm || !musHot) return;
+  try {
   const t = ac.currentTime;
   musCalm.gain.setTargetAtTime(wantH ? 0 : 0.52, t, 0.12);
   musHot.gain.setTargetAtTime(wantH ? 0.58 : 0, t, 0.08);
+  } catch (e) { ac = 0; }
 }
 function beep(f, dur, type, vol, slide) {
   if (!ac || muted) return;
+  try {
   const t = ac.currentTime,
     o = ac.createOscillator(),
     g = ac.createGain();
@@ -218,9 +230,11 @@ function beep(f, dur, type, vol, slide) {
   g.connect(mast);
   o.start(t);
   o.stop(t + dur + 0.02);
+  } catch (e) { ac = 0; }
 }
 function noise(dur, vol, cut) {
   if (!ac || !sfxN || muted) return;
+  try {
   const t = ac.currentTime,
     s = ac.createBufferSource(),
     f = ac.createBiquadFilter(),
@@ -234,6 +248,7 @@ function noise(dur, vol, cut) {
   f.connect(g);
   g.connect(mast);
   s.start(t);
+  } catch (e) { ac = 0; }
 }
 function sfx(k) {
   const j = 0.93 + Math.random() * 0.14;
@@ -308,9 +323,11 @@ function hill(off, yo, col, amp) {
 }
 function scrim(x, y, w, h) {
   X.fillStyle = "rgba(12,11,14,.85)";
-  X.beginPath();
-  X.roundRect(x, y, w, h, 8);
-  X.fill();
+  if (X.roundRect) {
+    X.beginPath();
+    X.roundRect(x, y, w, h, 8);
+    X.fill();
+  } else X.fillRect(x, y, w, h);
 }
 function star(ctx, r) {
   ctx.beginPath();
@@ -1012,13 +1029,14 @@ function loop(now) {
       acc -= 1 / 60;
     }
   }
-  draw();
+  try {
+    draw();
+  } catch (e) {}
   requestAnimationFrame(loop);
 }
 onkeydown = (e) => {
   if (e.repeat) return;
   keys.add(e.code);
-  unlock();
   if ("Space KeyZ KeyW ArrowUp".includes(e.code)) {
     e.preventDefault();
     jump();
@@ -1038,6 +1056,7 @@ onkeydown = (e) => {
     muted ^= 1;
     if (mast) mast.gain.value = muted ? 0 : 0.9;
   }
+  unlock();
 };
 onkeyup = (e) => keys.delete(e.code);
 onblur = () => {
@@ -1045,7 +1064,6 @@ onblur = () => {
   touchJ = 0;
 };
 C.onpointerdown = (e) => {
-  unlock();
   const r = C.getBoundingClientRect();
   const u = (e.clientX - r.left) / r.width;
   if (mode === 0) go();
@@ -1056,6 +1074,7 @@ C.onpointerdown = (e) => {
     touchJ = 1;
     jump();
   } else dash();
+  unlock();
 };
 C.onpointerup = () => {
   touchJ = 0;
